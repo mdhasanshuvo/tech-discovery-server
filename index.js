@@ -46,6 +46,105 @@ async function run() {
             res.send({ token });
         })
 
+        app.get('/product', async (req, res) => {
+            const { page = 1, limit = 6, search = '' } = req.query;
+
+            try {
+                const query = {
+                    status: 'Accepted',
+                    tags: {
+                        $elemMatch: {
+                            text: { $regex: search, $options: "i" }
+                        }
+                    }
+                };
+
+                const products = await productCollection
+                    .find(query)
+                    .skip((page - 1) * limit)
+                    .limit(parseInt(limit))
+                    .toArray();
+
+                const total = await productCollection.countDocuments(query);
+
+                res.send({
+                    products,
+                    total,
+                    totalPages: Math.ceil(total / limit),
+                    currentPage: parseInt(page),
+                });
+            } catch (error) {
+                console.error('Error fetching products:', error);
+                res.status(500).send({ message: 'Failed to fetch products', error });
+            }
+        });
+
+        app.patch('/products/:id/upvote', async (req, res) => {
+            const { id } = req.params;
+            const { userEmail } = req.body; // Pass user email from the frontend
+
+            try {
+                const product = await productCollection.findOne({ _id: new ObjectId(id) });
+
+                if (!product) {
+                    return res.status(404).send({ message: 'Product not found' });
+                }
+
+                if (product.voters?.includes(userEmail)) {
+                    return res.status(400).send({ message: 'User has already voted for this product' });
+                }
+
+                const result = await productCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $inc: { votes: 1 },
+                        $push: { voters: userEmail }, // Maintain a list of users who voted
+                    }
+                );
+
+                res.send({ message: 'Upvoted successfully', result });
+            } catch (error) {
+                console.error('Error upvoting product:', error);
+                res.status(500).send({ message: 'Failed to upvote product', error });
+            }
+        });
+
+
+        app.patch('/products/:id/downvote', async (req, res) => {
+            const { id } = req.params;
+            const { userEmail } = req.body; // Pass user email from the frontend
+
+            try {
+                const product = await productCollection.findOne({ _id: new ObjectId(id) });
+
+                if (!product) {
+                    return res.status(404).send({ message: 'Product not found' });
+                }
+
+                if (!product.voters?.includes(userEmail)) {
+                    return res.status(400).send({ message: 'User has not voted for this product yet' });
+                }
+
+                const result = await productCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $inc: { votes: -1 },
+                        $pull: { voters: userEmail }, // Remove the user email from the voters list
+                    }
+                );
+
+                res.send({ message: 'Downvoted successfully', result });
+            } catch (error) {
+                console.error('Error downvoting product:', error);
+                res.status(500).send({ message: 'Failed to downvote product', error });
+            }
+        });
+
+
+
+
+
+
         app.get('/products/review-queue', async (req, res) => {
             try {
                 const products = await productCollection
