@@ -88,6 +88,44 @@ async function run() {
         });
 
 
+        app.get("/user/profile", async (req, res) => {
+            const email = req.query.email; // Get email from query parameter
+            if (!email) {
+                return res.status(400).send({ message: "Email is required" }); // Handle missing email
+            }
+
+            try {
+                const user = await userCollection.findOne({ email });
+                if (!user) {
+                    return res.status(404).send({ message: "User not found" });
+                }
+                res.send(user); // Send the user profile
+            } catch (error) {
+                res.status(500).send({ message: "Error fetching user profile", error });
+            }
+        });
+
+
+        app.patch("/user/subscribe", async (req, res) => {
+            const email = req.body.email; // Assuming email is passed in the body
+            try {
+                const result = await userCollection.updateOne(
+                    { email },
+                    { $set: { subscribed: true } }
+                );
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).send({ message: "User not found" });
+                }
+                res.send({ message: "Subscription updated successfully" });
+            } catch (error) {
+                res.status(500).send({ message: "Error updating subscription", error });
+            }
+        });
+
+
+
+
         // Endpoint to update user role
         app.patch("/users/:id/role", async (req, res) => {
             const { id } = req.params;
