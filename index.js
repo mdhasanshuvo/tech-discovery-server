@@ -68,6 +68,26 @@ async function run() {
             res.send({ admin });
         })
 
+        app.get('/users/moderator/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+
+            try {
+                const user = await userCollection.findOne(query);
+                let moderator = false;
+
+                if (user) {
+                    moderator = user?.role === 'moderator';
+                }
+
+                res.send({ moderator });
+            } catch (error) {
+                console.error("Error checking moderator status:", error);
+                res.status(500).send({ error: "Internal Server Error" });
+            }
+        });
+
+
         // Endpoint to update user role
         app.patch("/users/:id/role", async (req, res) => {
             const { id } = req.params;
