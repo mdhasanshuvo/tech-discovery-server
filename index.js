@@ -46,7 +46,9 @@ async function run() {
         })
 
 
-        app.get("/users",  async (req, res) => {
+
+
+        app.get("/users", async (req, res) => {
             try {
                 const users = await userCollection.find().toArray();
                 res.send(users);
@@ -54,6 +56,17 @@ async function run() {
                 res.status(500).send({ message: "Failed to fetch users", error });
             }
         });
+
+        app.get('/users/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            let admin = false;
+            if (user) {
+                admin = user?.role === 'admin';
+            }
+            res.send({ admin });
+        })
 
         // Endpoint to update user role
         app.patch("/users/:id/role", async (req, res) => {
@@ -86,6 +99,7 @@ async function run() {
             const result = await userCollection.insertOne(user);
             res.send(result);
         });
+
 
 
     } finally {
