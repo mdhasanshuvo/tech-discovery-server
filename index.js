@@ -37,6 +37,7 @@ async function run() {
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
         const userCollection = client.db("Tech-Discovery-DB").collection("Users");
+        const productCollection = client.db('Tech-Discovery-DB').collection('Products');
 
         // jwt related api
         app.post('/jwt', async (req, res) => {
@@ -44,6 +45,92 @@ async function run() {
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
             res.send({ token });
         })
+
+        // Update a product by ID
+        app.put('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedProduct = req.body;
+            delete updatedProduct._id;
+
+            try {
+                const result = await productCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: updatedProduct }
+                );
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send({ message: "Product not found or no changes made" });
+                }
+
+                res.send({ message: "Product updated successfully" });
+            } catch (error) {
+                res.status(500).send({ message: "Failed to update product", error });
+            }
+        });
+
+        // Fetch all products by user email
+        app.get('/products', async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                return res.status(400).send({ message: "User email is required" });
+            }
+            try {
+                const products = await productCollection.find({ "owner.email": email }).toArray();
+                res.send(products);
+            } catch (error) {
+                res.status(500).send({ message: "Failed to fetch products", error });
+            }
+        });
+
+        // Delete a product by ID
+        app.delete('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            try {
+                const result = await productCollection.deleteOne({ _id: new ObjectId(id) });
+                if (result.deletedCount === 0) {
+                    return res.status(404).send({ message: "Product not found" });
+                }
+                res.send({ message: "Product deleted successfully" });
+            } catch (error) {
+                res.status(500).send({ message: "Failed to delete product", error });
+            }
+        });
+
+        app.post('/products', async (req, res) => {
+            const { name, image, description, tags, externalLink } = req.body;
+
+            // Check if all required fields are provided
+            if (!name || !image || !description) {
+                return res.status(400).send({ message: 'All fields are required' });
+            }
+
+            // Create the product object
+            const product = {
+                name,
+                image,
+                description,
+                tags,
+                externalLink,
+                owner: {
+                    name: req.body.ownerName,
+                    email: req.body.ownerEmail,
+                    image: req.body.ownerImage
+                },
+                createdAt: new Date(), // Save the timestamp for sorting
+            };
+
+            try {
+                const result = await productCollection.insertOne(product);
+                res.status(201).send({
+                    message: 'Product added successfully',
+                    productId: result.insertedId,
+                });
+            } catch (error) {
+                console.error('Error adding product:', error);
+                res.status(500).send({ message: 'Failed to add product', error });
+            }
+        });
+
 
 
 
