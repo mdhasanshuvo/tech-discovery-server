@@ -46,6 +46,65 @@ async function run() {
             res.send({ token });
         })
 
+        app.get('/products/review-queue', async (req, res) => {
+            try {
+                const products = await productCollection
+                    .find()
+                    .sort({ status: 1 }) // Pending products first (assumes "Pending" comes before "Accepted" and "Rejected")
+                    .toArray();
+                res.send(products);
+            } catch (error) {
+                console.error("Error fetching products for review queue:", error);
+                res.status(500).send({ message: "Failed to fetch products" });
+            }
+        });
+
+        app.patch('/products/:id/status', async (req, res) => {
+            const { id } = req.params;
+            const { status } = req.body;
+
+            if (!['Accepted', 'Rejected'].includes(status)) {
+                return res.status(400).send({ message: "Invalid status value" });
+            }
+
+            try {
+                const result = await productCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status } }
+                );
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send({ message: "Product not found or status unchanged" });
+                }
+
+                res.send({ message: "Product status updated successfully" });
+            } catch (error) {
+                console.error("Error updating product status:", error);
+                res.status(500).send({ message: "Failed to update product status", error });
+            }
+        });
+
+        app.patch('/products/:id/featured', async (req, res) => {
+            const { id } = req.params;
+
+            try {
+                const result = await productCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { featured: true } }
+                );
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send({ message: "Product not found or already featured" });
+                }
+
+                res.send({ message: "Product marked as featured successfully" });
+            } catch (error) {
+                console.error("Error marking product as featured:", error);
+                res.status(500).send({ message: "Failed to mark product as featured", error });
+            }
+        });
+
+
         // Update a product by ID
         app.put('/products/:id', async (req, res) => {
             const id = req.params.id;
