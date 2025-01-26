@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -38,6 +38,35 @@ async function run() {
 
         const userCollection = client.db("Tech-Discovery-DB").collection("Users");
 
+        app.get("/users", async (req, res) => {
+            try {
+                const users = await userCollection.find().toArray();
+                res.send(users);
+            } catch (error) {
+                res.status(500).send({ message: "Failed to fetch users", error });
+            }
+        });
+
+        // Endpoint to update user role
+        app.patch("/users/:id/role", async (req, res) => {
+            const { id } = req.params;
+            const { role } = req.body;
+
+            try {
+                const result = await userCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { role } }
+                );
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).send({ message: "User not found" });
+                }
+
+                res.send({ message: "Role updated successfully", result });
+            } catch (error) {
+                res.status(500).send({ message: "Failed to update role", error });
+            }
+        });
 
         app.post("/users", async (req, res) => {
             const user = req.body;
