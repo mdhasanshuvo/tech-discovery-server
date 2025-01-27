@@ -48,14 +48,14 @@ async function run() {
 
         app.get('/products/:id', async (req, res) => {
             const { id } = req.params;
-        
+
             try {
                 const product = await productCollection.findOne({ _id: new ObjectId(id) });
-        
+
                 if (!product) {
                     return res.status(404).send({ message: 'Product not found' });
                 }
-        
+
                 res.send({
                     message: 'Product details fetched successfully',
                     product,
@@ -69,39 +69,54 @@ async function run() {
         app.patch('/products/:id/report', async (req, res) => {
             const { id } = req.params;
             const { userEmail, reportReason } = req.body; // Pass user email and report reason from the frontend
-        
+
             try {
                 const product = await productCollection.findOne({ _id: new ObjectId(id) });
-        
+
                 if (!product) {
                     return res.status(404).send({ message: 'Product not found' });
                 }
-        
+
                 const result = await productCollection.updateOne(
                     { _id: new ObjectId(id) },
                     {
                         $push: { reports: { userEmail, reportReason, reportedAt: new Date() } }, // Add report details
                     }
                 );
-        
+
                 res.send({ message: 'Product reported successfully', result });
             } catch (error) {
                 console.error('Error reporting product:', error);
                 res.status(500).send({ message: 'Failed to report product', error });
             }
         });
-        
+
+        // Endpoint to fetch all reported products
+        app.get('/reported-products', async (req, res) => {
+            try {
+                const reportedProducts = await productCollection
+                    .find({ reports: { $exists: true, $ne: [] } }) 
+                    .toArray();
+
+                res.send(reportedProducts);
+            } catch (error) {
+                console.error('Error fetching reported products:', error);
+                res.status(500).send({ message: 'Failed to fetch reported products', error });
+            }
+        });
+
+
         app.patch('/products/:id/review', async (req, res) => {
             const { id } = req.params;
             const { reviewerName, reviewerImage, reviewDescription, rating, userEmail } = req.body; // Pass review data from the frontend
-        
+
             try {
                 const product = await productCollection.findOne({ _id: new ObjectId(id) });
-        
+
                 if (!product) {
                     return res.status(404).send({ message: 'Product not found' });
                 }
-        
+
                 const result = await productCollection.updateOne(
                     { _id: new ObjectId(id) },
                     {
@@ -110,15 +125,15 @@ async function run() {
                         },
                     }
                 );
-        
+
                 res.send({ message: 'Review added successfully', result });
             } catch (error) {
                 console.error('Error adding review:', error);
                 res.status(500).send({ message: 'Failed to add review', error });
             }
         });
-        
-        
+
+
 
         app.get('/product', async (req, res) => {
             const { page = 1, limit = 6, search = '' } = req.query;
