@@ -675,7 +675,55 @@ async function run() {
                 res.status(500).json({ message: "Failed to fetch valid coupons", error });
             }
         });
-        
+
+
+        // Validate Coupon Code API
+        app.get("/coupons/validate", async (req, res) => {
+            try {
+                const { code } = req.query;
+
+                if (!code) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Coupon code is required.",
+                    });
+                }
+
+                // Fetch coupon from the database
+                const coupon = await couponCollection.findOne({ code });
+
+                if (!coupon) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Coupon code is invalid.",
+                    });
+                }
+
+                // Check if the coupon is expired
+                const currentDate = new Date();
+                if (new Date(coupon.expiryDate) < currentDate) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Coupon code is expired.",
+                    });
+                }
+
+                // Return coupon details if valid
+                return res.status(200).json({
+                    success: true,
+                    code: coupon.code,
+                    discount: coupon.discount,
+                    expiryDate: coupon.expiryDate,
+                    message: "Coupon is valid.",
+                });
+            } catch (error) {
+                console.error("Error validating coupon:", error);
+                return res.status(500).json({
+                    success: false,
+                    message: "An error occurred while validating the coupon.",
+                });
+            }
+        });
 
 
 
