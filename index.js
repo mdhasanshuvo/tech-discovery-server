@@ -460,7 +460,7 @@ async function run() {
 
 
         app.get('/user/subscription', async (req, res) => {
-            const { email } = req.query; 
+            const { email } = req.query;
             try {
                 if (!email) {
                     return res.status(400).send({ message: 'Email is required' });
@@ -472,7 +472,7 @@ async function run() {
                     return res.status(404).send({ message: 'User not found' });
                 }
 
-                res.send({ subscribed: user.subscribed || false }); 
+                res.send({ subscribed: user.subscribed || false });
             } catch (error) {
                 console.error('Error fetching subscription status:', error);
                 res.status(500).send({ message: 'Failed to fetch subscription status', error });
@@ -570,6 +570,30 @@ async function run() {
                 clientSecret: paymentIntent.client_secret
             })
         })
+
+
+        app.get('/admin/statistics', async (req, res) => {
+            try {
+                const products = await productCollection.find().toArray();
+                const reviews = await productCollection.aggregate([{ $unwind: "$reviews" }]).toArray();
+                const users = await userCollection.countDocuments();
+
+                const acceptedProducts = products.filter(product => product.status === 'Accepted').length;
+                const pendingProducts = products.filter(product => product.status === 'Pending').length;
+
+                res.send({
+                    products: products.length,
+                    acceptedProducts,
+                    pendingProducts,
+                    reviews: reviews.length,
+                    users,
+                });
+            } catch (error) {
+                console.error('Error fetching statistics:', error);
+                res.status(500).send({ message: 'Failed to fetch statistics', error });
+            }
+        });
+
 
 
 
