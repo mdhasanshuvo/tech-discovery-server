@@ -459,6 +459,28 @@ async function run() {
         });
 
 
+        app.get('/user/subscription', async (req, res) => {
+            const { email } = req.query; 
+            try {
+                if (!email) {
+                    return res.status(400).send({ message: 'Email is required' });
+                }
+
+                const user = await userCollection.findOne({ email });
+
+                if (!user) {
+                    return res.status(404).send({ message: 'User not found' });
+                }
+
+                res.send({ subscribed: user.subscribed || false }); 
+            } catch (error) {
+                console.error('Error fetching subscription status:', error);
+                res.status(500).send({ message: 'Failed to fetch subscription status', error });
+            }
+        });
+
+
+
 
 
         // Endpoint to update user role
