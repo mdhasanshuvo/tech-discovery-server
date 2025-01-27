@@ -95,7 +95,7 @@ async function run() {
         app.get('/reported-products', async (req, res) => {
             try {
                 const reportedProducts = await productCollection
-                    .find({ reports: { $exists: true, $ne: [] } }) 
+                    .find({ reports: { $exists: true, $ne: [] } })
                     .toArray();
 
                 res.send(reportedProducts);
@@ -491,6 +491,30 @@ async function run() {
             const result = await userCollection.insertOne(user);
             res.send(result);
         });
+
+
+        // Endpoint to fetch trending products
+        app.get('/tproducts/trending', async (req, res) => {
+            try {
+                const trendingProducts = await productCollection
+                    .find({ status: 'Accepted' }) // Only fetch accepted products
+                    .sort({ votes: -1 }) // Sort by votes (highest first)
+                    .limit(6) // Limit to 6 products
+                    .toArray();
+
+                if (!trendingProducts) {
+                    return res.status(404).send({ message: 'No products found' });
+                }
+
+                res.send(trendingProducts);
+            } catch (error) {
+                console.error('Error fetching trending products:', error);
+                res.status(500).send({ message: 'Failed to fetch trending products', error });
+            }
+        });
+
+       
+
 
 
 
