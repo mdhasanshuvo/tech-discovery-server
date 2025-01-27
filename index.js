@@ -663,6 +663,18 @@ async function run() {
             }
         });
 
+
+        app.get("/valid", async (req, res) => {
+            try {
+                const currentDate = new Date();
+                const validCoupons = await couponCollection.find({
+                    expiryDate: { $gte: currentDate },
+                }).toArray();
+                res.json(validCoupons);
+            } catch (error) {
+                res.status(500).json({ message: "Failed to fetch valid coupons", error });
+            }
+        });
         
 
 
