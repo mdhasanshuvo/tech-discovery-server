@@ -234,11 +234,11 @@ async function run() {
 
 
 
-        app.get('/products/review-queue', async (req, res) => {
+        app.get('/queue-products/review-queue', async (req, res) => {
             try {
                 const products = await productCollection
                     .find()
-                    .sort({ status: 1 }) // Pending products first (assumes "Pending" comes before "Accepted" and "Rejected")
+                    .sort({ status: 1 }) 
                     .toArray();
                 res.send(products);
             } catch (error) {
@@ -513,7 +513,25 @@ async function run() {
             }
         });
 
-       
+        app.get('/f-products/featured', async (req, res) => {
+            try {
+                const featuredProducts = await productCollection
+                    .find({ status: 'Accepted', featured: true }) // Fetch only featured products
+                    .sort({ createdAt: -1 }) // Sort by timestamp (latest first)
+                    .limit(4) // Limit to 4 products
+                    .toArray();
+
+                if (!featuredProducts || featuredProducts.length === 0) {
+                    return res.status(404).send({ message: 'No featured products found' });
+                }
+
+                res.send(featuredProducts);
+            } catch (error) {
+                console.error('Error fetching featured products:', error);
+                res.status(500).send({ message: 'Failed to fetch featured products', error });
+            }
+        });
+
 
 
 
