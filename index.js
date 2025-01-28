@@ -346,30 +346,51 @@ async function run() {
         });
 
         app.post('/products', async (req, res) => {
-            const { name, image, description, tags, externalLink } = req.body;
+            const { name, image, description, tags, externalLink, owner } = req.body;
+            const ownerName = owner.name
+            const ownerEmail = owner.email;
+            const ownerImage = owner.image;
 
             // Check if all required fields are provided
-            if (!name || !image || !description) {
+            if (!name || !image || !description || !ownerEmail) {
                 return res.status(400).send({ message: 'All fields are required' });
             }
 
-            // Create the product object
-            const product = {
-                name,
-                image,
-                description,
-                tags,
-                externalLink,
-                owner: {
-                    name: req.body.ownerName,
-                    email: req.body.ownerEmail,
-                    image: req.body.ownerImage
-                },
-                createdAt: new Date(), // Save the timestamp for sorting
-            };
-
             try {
+                // Find the user in the database
+                const user = await userCollection.find({ email: ownerEmail }).toArray();
+
+                if (user.length === 0) {
+                    return res.status(404).send({ message: 'User not found' });
+                }
+
+                // Check if the user is eligible to add a product
+                const userProductsCount = await productCollection.countDocuments({ "owner.email": ownerEmail });
+
+                if (!user[0].subscribed && userProductsCount >= 1) {
+                    return res.status(403).send({
+                        message: 'Product limit reached. Purchase a membership subscription to add more products.',
+                    });
+                }
+
+                // Create the product object
+                const product = {
+                    name,
+                    image,
+                    description,
+                    tags,
+                    externalLink,
+                    owner: {
+                        name: ownerName,
+                        email: ownerEmail,
+                        image: ownerImage,
+                    },
+                    createdAt: new Date(), // Save the timestamp for sorting
+                };
+
+                // Insert the product into the database
                 const result = await productCollection.insertOne(product);
+
                 res.status(201).send({
                     message: 'Product added successfully',
                     productId: result.insertedId,
@@ -379,6 +400,43 @@ async function run() {
                 res.status(500).send({ message: 'Failed to add product', error });
             }
         });
+
+
+
+        app.get('/user/eligibility', async (req, res) => {
+            const { email } = req.query;
+
+            if (!email) {
+                return res.status(400).send({ message: "Email is required" });
+            }
+
+            try {
+                // Check if the user exists and fetch their subscription status
+                const userCursor = userCollection.find({ email }).limit(1);
+                const userList = await userCursor.toArray();
+
+                if (userList.length === 0) {
+                    return res.status(404).send({ message: "User not found" });
+                }
+
+                const user = userList[0]; // Extract user from the array
+
+                // Count the number of products added by the user
+                const userProductsCount = await productCollection.countDocuments({ "owner.email": email });
+
+                // Determine eligibility
+                const canAddProduct = user.subscribed || userProductsCount < 1;
+
+                res.send({ canAddProduct });
+            } catch (error) {
+                console.error("Error checking eligibility:", error);
+                res.status(500).send({ message: "Failed to check eligibility", error });
+            }
+        });
+
+
+
+
 
 
 
