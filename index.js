@@ -597,20 +597,37 @@ async function run() {
         });
 
         app.get('/alltrending', async (req, res) => {
+
+            const { page = 1, limit = 6, search = '' } = req.query;
+
             try {
-                const trendingProducts = await productCollection
-                    .find({ status: 'Accepted' }) // Only fetch accepted products
+                const query = {
+                    status: 'Accepted',
+                    tags: {
+                        $elemMatch: {
+                            text: { $regex: search, $options: "i" }
+                        }
+                    }
+                };
+
+                const products = await productCollection
+                    .find({ status: 'Accepted' })
                     .sort({ votes: -1 }) // Sort by votes (highest first)
+                    .skip((page - 1) * limit)
+                    .limit(parseInt(limit))
                     .toArray();
 
-                if (!trendingProducts) {
-                    return res.status(404).send({ message: 'No products found' });
-                }
+                const total = await productCollection.countDocuments(query);
 
-                res.send(trendingProducts);
+                res.send({
+                    products,
+                    total,
+                    totalPages: Math.ceil(total / limit),
+                    currentPage: parseInt(page),
+                });
             } catch (error) {
-                console.error('Error fetching trending products:', error);
-                res.status(500).send({ message: 'Failed to fetch trending products', error });
+                console.error('Error fetching products:', error);
+                res.status(500).send({ message: 'Failed to fetch products', error });
             }
         });
 
