@@ -674,7 +674,7 @@ async function run() {
                 const users = await userCollection.countDocuments();
 
                 const acceptedProducts = products.filter(product => product.status === 'Accepted').length;
-                const pendingProducts = products.filter(product => product.status === 'Pending').length;
+                const pendingProducts = products.length - acceptedProducts;
 
                 res.send({
                     products: products.length,
@@ -686,6 +686,30 @@ async function run() {
             } catch (error) {
                 console.error('Error fetching statistics:', error);
                 res.status(500).send({ message: 'Failed to fetch statistics', error });
+            }
+        });
+
+
+        app.get('/user/statistics', async (req, res) => {
+            try {
+                const userEmail = req.query.email; // Get the user's email from query params
+                if (!userEmail) {
+                    return res.status(400).send({ message: "User email is required" });
+                }
+
+                const products = await productCollection.find({ "owner.email": userEmail }).toArray();
+
+                const acceptedProducts = products.filter(product => product.status === 'Accepted').length;
+                const pendingProducts = products.length - acceptedProducts;
+
+                res.send({
+                    totalProducts: products.length,
+                    acceptedProducts,
+                    pendingProducts
+                });
+            } catch (error) {
+                console.error('Error fetching user statistics:', error);
+                res.status(500).send({ message: 'Failed to fetch user statistics', error });
             }
         });
 
